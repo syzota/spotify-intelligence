@@ -359,13 +359,12 @@ spotify-intelligence/
 
 | NIM | Nama | Kontribusi |
 |-----|------|------------|
-| 2409116002 | **Nurhidayah** | ETL Pipeline, Transformasi Data |
-| 2409116007 | **Jen Agresia Misti** | Analisis OLAP & Visualisasi |
-| 2409116015 | **Putri Syafana Afrillia** | Data Warehouse Design, Dashboard HTML |
-| 2409116040 | **Dhita Olivia R. K.** | Dokumentasi & Laporan |
+| 2409116002 | **Nurhidayah** | Analisis OLAP & Visualisasi |
+| 2409116007 | **Jen Agresia Misti** | ETL Pipeline, Transformasi Data |
+| 2409116015 | **Putri Syafana Afrillia** | Website Dashboard, Finishing + Reports |
+| 2409116040 | **Dhita Olivia R. K.** | Data & Business Understanding |
 
 > **Mata Kuliah** — Business Intelligence  
-> **Dosen Pengampu** — Dr. Akhmad Irsyad S.T.,M.Kom.
 > **Program Studi** — Sistem Informasi · Fakultas Teknik · Universitas Mulawarman · 2025/2026
 
 ---
