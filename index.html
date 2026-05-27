@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Data Warehouse Spotify</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #07130d;
+      --panel: rgba(255,255,255,0.075);
+      --panel-2: rgba(255,255,255,0.115);
+      --line: rgba(255,255,255,0.14);
+      --text: #effff5;
+      --muted: #a8bcae;
+      --green: #1ed760;
+      --green-2: #73ffa6;
+      --yellow: #f9d65c;
+      --red: #ff6b6b;
+      --blue: #62c6ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(30,215,96,.28), transparent 32%),
+        radial-gradient(circle at top right, rgba(98,198,255,.16), transparent 25%),
+        linear-gradient(135deg, #06110b 0%, #0b1710 50%, #07130d 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap { width: min(1400px, 94vw); margin: 0 auto; padding: 34px 0 48px; }
+    header {
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;
+      padding: 26px; border: 1px solid var(--line); border-radius: 28px;
+      background: linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
+      box-shadow: 0 20px 70px rgba(0,0,0,.35);
+      backdrop-filter: blur(16px);
+    }
+    .eyebrow { color: var(--green-2); font-weight: 800; letter-spacing: .12em; font-size: 12px; text-transform: uppercase; }
+    h1 { margin: 10px 0 8px; font-size: clamp(30px, 4vw, 56px); line-height: 1; letter-spacing: -0.05em; }
+    .subtitle { color: var(--muted); max-width: 720px; font-size: 15px; line-height: 1.65; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 999px;
+      background: rgba(30,215,96,.14); color: var(--green-2); border: 1px solid rgba(30,215,96,.35);
+      white-space: nowrap; font-weight: 700;
+    }
+    .spotify-dot { width: 12px; height: 12px; border-radius: 999px; background: var(--green); box-shadow: 0 0 18px var(--green); }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 18px 0; }
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 24px;
+      padding: 20px; box-shadow: 0 18px 55px rgba(0,0,0,.22); backdrop-filter: blur(16px);
+    }
+    .kpi-label { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+    .kpi-value { font-size: 30px; font-weight: 900; letter-spacing: -0.04em; }
+    .kpi-note { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.5; }
+    .grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 18px; margin-top: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 18px; }
+    .card h2 { margin: 0 0 4px; font-size: 19px; letter-spacing: -0.02em; }
+    .desc { color: var(--muted); font-size: 13px; line-height: 1.55; margin-bottom: 16px; }
+    .chart-box { position: relative; height: 330px; }
+    .chart-box.sm { height: 285px; }
+    .insight {
+      margin-top: 14px; padding: 13px 14px; border-radius: 16px; background: rgba(30,215,96,.10);
+      border: 1px solid rgba(30,215,96,.22); color: #ddffe8; font-size: 13px; line-height: 1.55;
+    }
+    table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 16px; font-size: 13px; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,.09); text-align: left; }
+    th { color: var(--green-2); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+    td { color: #f2fff6; }
+    tr:hover td { background: rgba(255,255,255,.055); }
+    .pill { display: inline-block; padding: 5px 9px; border-radius: 999px; background: rgba(255,255,255,.10); color: var(--green-2); font-weight: 700; }
+    .footer-note { color: var(--muted); margin-top: 18px; font-size: 12px; line-height: 1.6; }
+    @media (max-width: 1000px) {
+      .kpis, .grid-3, .grid { grid-template-columns: 1fr; }
+      header { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <div class="eyebrow">Spotify Data Warehouse Dashboard</div>
+        <h1>Dashboard Analisis Listening Behavior</h1>
+        <div class="subtitle">
+          Dashboard ini merangkum hasil query data warehouse Spotify: popularitas genre, churn berdasarkan langganan,
+          perilaku pengguna berdasarkan negara, tren tahunan, fitur audio, serta perbandingan pengguna aktif dan churned.
+        </div>
+      </div>
+      <div class="badge"><span class="spotify-dot"></span> Star Schema Analytics</div>
+    </header>
+
+    <section class="kpis">
+      <div class="card">
+        <div class="kpi-label">Total Plays pada Fact Table</div>
+        <div class="kpi-value">50.000</div>
+        <div class="kpi-note">Berdasarkan total aktivitas pada tabel Fact_Listening.</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Genre Popularitas Tertinggi</div>
+        <div class="kpi-value">Rock</div>
+        <div class="kpi-note">Avg popularity 70,20 dengan 243 total plays.</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Churn Rate Tertinggi</div>
+        <div class="kpi-value">26,79%</div>
+        <div class="kpi-note">Terjadi pada subscription type Family.</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Negara Paling Aktif</div>
+        <div class="kpi-value">US</div>
+        <div class="kpi-note">Amerika Serikat mencatat 6.507 total plays.</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Top Genre berdasarkan Rata-Rata Popularitas</h2>
+        <div class="desc">Menampilkan 10 genre dengan rata-rata popularitas tertinggi. Rock menjadi genre paling unggul.</div>
+        <div class="chart-box"><canvas id="genreChart"></canvas></div>
+        <div class="insight">Insight: Rock memiliki avg popularity tertinggi sebesar 70,20. Namun country memiliki skip rate paling rendah, sehingga loyalitas pendengarnya terlihat lebih stabil.</div>
+      </div>
+      <div class="card">
+        <h2>Churn Rate berdasarkan Subscription</h2>
+        <div class="desc">Membandingkan risiko churn tiap jenis langganan.</div>
+        <div class="chart-box"><canvas id="subscriptionChart"></canvas></div>
+        <div class="insight">Insight: Family memiliki churn rate tertinggi dan avg listening time paling rendah, sedangkan Premium memiliki skip rate terendah.</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Listening Behavior berdasarkan Negara</h2>
+        <div class="desc">Kode negara sudah diperjelas: US = Amerika Serikat, DE = Jerman, AU = Australia, PK = Pakistan, FR = Prancis, IN = India, UK = Inggris Raya, CA = Kanada.</div>
+        <div class="chart-box"><canvas id="countryChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Trend Plays per Tahun</h2>
+        <div class="desc">Melihat stabilitas pemutaran lagu dari 2020 sampai 2025.</div>
+        <div class="chart-box"><canvas id="yearlyChart"></canvas></div>
+        <div class="insight">Insight: Tahun 2021 memiliki total plays tertinggi, sedangkan 2024 memiliki skip rate terendah.</div>
+      </div>
+    </section>
+
+    <section class="grid-3">
+      <div class="card">
+        <h2>Popularity Level vs Skip Rate</h2>
+        <div class="desc">Melihat apakah lagu populer lebih jarang di-skip.</div>
+        <div class="chart-box sm"><canvas id="audioChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Active vs Churned Users</h2>
+        <div class="desc">Perbandingan total plays dan engagement pengguna.</div>
+        <div class="chart-box sm"><canvas id="churnAudioChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Ringkasan Insight</h2>
+        <div class="desc">Poin utama dari keseluruhan dashboard.</div>
+        <table>
+          <tbody>
+            <tr><td><span class="pill">Genre</span></td><td>Rock paling populer, country paling rendah skip rate.</td></tr>
+            <tr><td><span class="pill">Subscription</span></td><td>Family paling berisiko churn.</td></tr>
+            <tr><td><span class="pill">Negara</span></td><td>US paling aktif, PK churn tertinggi.</td></tr>
+            <tr><td><span class="pill">Tahun</span></td><td>Aktivitas relatif stabil dari 2020–2025.</td></tr>
+            <tr><td><span class="pill">Churn</span></td><td>Churn lebih terlihat dari engagement, bukan fitur audio.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:18px;">
+      <h2>Playlist Genre berdasarkan Kelompok Umur</h2>
+      <div class="desc">Cuplikan output segmentasi umur. Data lengkap pada query menghasilkan 140 baris kombinasi age group dan playlist genre.</div>
+      <table id="ageTable">
+        <thead>
+          <tr>
+            <th>Age Group</th>
+            <th>Playlist Genre</th>
+            <th>Total Plays</th>
+            <th>Avg Listening Time</th>
+            <th>Avg Skip Rate</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="footer-note">
+        Catatan: nilai churned_users pada query subscription berasal dari hasil SUM setelah join ke Fact_Listening, sehingga dapat terduplikasi sesuai jumlah aktivitas pemutaran.
+      </div>
+    </section>
+  </div>
+
+<script>
+const data = {"top_genre": [{"genre": "rock", "total_plays": 243, "avg_popularity": 70.2, "avg_skip_rate": 0.302, "avg_listening_time": 207.98}, {"genre": "summer", "total_plays": 234, "avg_popularity": 69.29, "avg_skip_rate": 0.3031, "avg_listening_time": 201.29}, {"genre": "dance", "total_plays": 185, "avg_popularity": 66.74, "avg_skip_rate": 0.313, "avg_listening_time": 191.91}, {"genre": "pop", "total_plays": 116, "avg_popularity": 62.85, "avg_skip_rate": 0.3329, "avg_listening_time": 200.03}, {"genre": "rock-n-roll", "total_plays": 149, "avg_popularity": 61.96, "avg_skip_rate": 0.2866, "avg_listening_time": 193.42}, {"genre": "sleep", "total_plays": 138, "avg_popularity": 60.69, "avg_skip_rate": 0.3128, "avg_listening_time": 197.51}, {"genre": "country", "total_plays": 113, "avg_popularity": 59.28, "avg_skip_rate": 0.2807, "avg_listening_time": 203.1}, {"genre": "r-n-b", "total_plays": 224, "avg_popularity": 58.4, "avg_skip_rate": 0.3002, "avg_listening_time": 199.86}, {"genre": "party", "total_plays": 115, "avg_popularity": 58.03, "avg_skip_rate": 0.3092, "avg_listening_time": 200.44}, {"genre": "reggaeton", "total_plays": 164, "avg_popularity": 57.76, "avg_skip_rate": 0.3137, "avg_listening_time": 204.2}], "subscription": [{"subscription_type": "Family", "total_users": 1795, "churned_users": 3135, "churn_rate_pct": 26.79, "avg_skip_rate": 0.3028, "avg_listening_time": 197.87}, {"subscription_type": "Student", "total_users": 1828, "churned_users": 3274, "churn_rate_pct": 26.6, "avg_skip_rate": 0.302, "avg_listening_time": 201.07}, {"subscription_type": "Premium", "total_users": 1992, "churned_users": 3374, "churn_rate_pct": 25.33, "avg_skip_rate": 0.2909, "avg_listening_time": 201.21}, {"subscription_type": "Free", "total_users": 1917, "churned_users": 3109, "churn_rate_pct": 24.54, "avg_skip_rate": 0.3001, "avg_listening_time": 200.41}], "countries": [{"country": "US", "country_name": "Amerika Serikat", "total_plays": 6507, "avg_listening_time": 199.19, "avg_skip_rate": 0.2945, "avg_songs_per_day": 48.86, "churn_rate_pct": 27.06}, {"country": "DE", "country_name": "Jerman", "total_plays": 6401, "avg_listening_time": 203.48, "avg_skip_rate": 0.2998, "avg_songs_per_day": 47.46, "churn_rate_pct": 26.15}, {"country": "AU", "country_name": "Australia", "total_plays": 6346, "avg_listening_time": 198.13, "avg_skip_rate": 0.3, "avg_songs_per_day": 49.56, "churn_rate_pct": 25.76}, {"country": "PK", "country_name": "Pakistan", "total_plays": 6337, "avg_listening_time": 199.95, "avg_skip_rate": 0.303, "avg_songs_per_day": 51.36, "churn_rate_pct": 27.54}, {"country": "FR", "country_name": "Prancis", "total_plays": 6298, "avg_listening_time": 201.24, "avg_skip_rate": 0.2956, "avg_songs_per_day": 50.85, "churn_rate_pct": 26.93}, {"country": "IN", "country_name": "India", "total_plays": 6245, "avg_listening_time": 201.94, "avg_skip_rate": 0.2984, "avg_songs_per_day": 49.94, "churn_rate_pct": 23.07}, {"country": "UK", "country_name": "Inggris Raya", "total_plays": 6043, "avg_listening_time": 198.05, "avg_skip_rate": 0.2976, "avg_songs_per_day": 49.11, "churn_rate_pct": 25.96}, {"country": "CA", "country_name": "Kanada", "total_plays": 5823, "avg_listening_time": 199.4, "avg_skip_rate": 0.3014, "avg_songs_per_day": 52.59, "churn_rate_pct": 23.54}], "audio_skip": [{"popularity_level": "Medium", "avg_energy": 0.647, "avg_danceability": 0.663, "avg_tempo": 120.87, "avg_valence": 0.533, "avg_skip_rate": 0.2979, "total_plays": 13590}, {"popularity_level": "Low", "avg_energy": null, "avg_danceability": null, "avg_tempo": null, "avg_valence": null, "avg_skip_rate": 0.298, "total_plays": 6623}, {"popularity_level": "High", "avg_energy": 0.671, "avg_danceability": 0.65, "avg_tempo": 121.06, "avg_valence": 0.526, "avg_skip_rate": 0.2993, "total_plays": 29787}], "yearly": [{"year": 2020, "total_plays": 8232, "avg_listening_time": 201.56, "avg_track_popularity": 64.29, "avg_skip_rate": 0.299}, {"year": 2021, "total_plays": 8495, "avg_listening_time": 199.64, "avg_track_popularity": 64.46, "avg_skip_rate": 0.301}, {"year": 2022, "total_plays": 8206, "avg_listening_time": 201.71, "avg_track_popularity": 64.59, "avg_skip_rate": 0.2973}, {"year": 2023, "total_plays": 8299, "avg_listening_time": 198.24, "avg_track_popularity": 64.33, "avg_skip_rate": 0.2988}, {"year": 2024, "total_plays": 8397, "avg_listening_time": 199.96, "avg_track_popularity": 64.81, "avg_skip_rate": 0.2972}, {"year": 2025, "total_plays": 8371, "avg_listening_time": 200.08, "avg_track_popularity": 64.71, "avg_skip_rate": 0.2993}], "churn_audio": [{"user_status": "Active", "avg_energy": 0.665, "avg_danceability": 0.653, "avg_valence": 0.528, "avg_tempo": 120.96, "avg_skip_rate": 0.2979, "avg_listening_time": 200.77, "total_plays": 37108}, {"user_status": "Churned", "avg_energy": 0.666, "avg_danceability": 0.653, "avg_valence": 0.527, "avg_tempo": 121.18, "avg_skip_rate": 0.3013, "avg_listening_time": 198.52, "total_plays": 12892}], "age_playlist_sample": [{"age_group": "18-25", "playlist_genre": "hip-hop", "total_plays": 1182, "avg_listening_time": 201.82, "avg_skip_rate": 0.2982}, {"age_group": "18-25", "playlist_genre": "rock", "total_plays": 909, "avg_listening_time": 205.02, "avg_skip_rate": 0.2972}, {"age_group": "18-25", "playlist_genre": "electronic", "total_plays": 904, "avg_listening_time": 203.67, "avg_skip_rate": 0.294}, {"age_group": "18-25", "playlist_genre": "pop", "total_plays": 738, "avg_listening_time": 202.29, "avg_skip_rate": 0.2984}, {"age_group": "18-25", "playlist_genre": "latin", "total_plays": 695, "avg_listening_time": 201.0, "avg_skip_rate": 0.3069}, {"age_group": "<18", "playlist_genre": "arabic", "total_plays": 45, "avg_listening_time": 184.98, "avg_skip_rate": 0.2869}, {"age_group": "<18", "playlist_genre": "blues", "total_plays": 44, "avg_listening_time": 202.64, "avg_skip_rate": 0.2941}, {"age_group": "<18", "playlist_genre": "indie", "total_plays": 42, "avg_listening_time": 187.29, "avg_skip_rate": 0.3576}, {"age_group": "<18", "playlist_genre": "turkish", "total_plays": 40, "avg_listening_time": 184.15, "avg_skip_rate": 0.3465}, {"age_group": "<18", "playlist_genre": "lofi", "total_plays": 39, "avg_listening_time": 194.69, "avg_skip_rate": 0.3028}]};
+
+Chart.defaults.color = '#d9f8e3';
+Chart.defaults.borderColor = 'rgba(255,255,255,.10)';
+Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+const green = cssVar('--green');
+const green2 = cssVar('--green-2');
+const yellow = cssVar('--yellow');
+const red = cssVar('--red');
+const blue = cssVar('--blue');
+
+new Chart(document.getElementById('genreChart'), {
+  type: 'bar',
+  data: {
+    labels: data.top_genre.map(d => d.genre),
+    datasets: [
+      {
+        label: 'Avg Popularity',
+        data: data.top_genre.map(d => d.avg_popularity),
+        backgroundColor: 'rgba(30, 215, 96, .72)',
+        borderColor: green,
+        borderWidth: 1,
+        borderRadius: 10
+      },
+      {
+        label: 'Avg Listening Time',
+        data: data.top_genre.map(d => d.avg_listening_time),
+        type: 'line',
+        yAxisID: 'y1',
+        borderColor: blue,
+        backgroundColor: 'rgba(98,198,255,.15)',
+        tension: .35,
+        pointRadius: 4
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { beginAtZero: false, title: {display:true, text:'Avg Popularity'} },
+      y1: { position:'right', grid:{drawOnChartArea:false}, title: {display:true, text:'Listening Time'} }
+    },
+    plugins: { legend: { position: 'bottom' } }
+  }
+});
+
+new Chart(document.getElementById('subscriptionChart'), {
+  type: 'doughnut',
+  data: {
+    labels: data.subscription.map(d => d.subscription_type),
+    datasets: [{
+      data: data.subscription.map(d => d.churn_rate_pct),
+      backgroundColor: ['rgba(255,107,107,.78)', 'rgba(249,214,92,.78)', 'rgba(98,198,255,.78)', 'rgba(30,215,96,.78)'],
+      borderColor: 'rgba(255,255,255,.16)',
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw}%` } }
+    }
+  }
+});
+
+new Chart(document.getElementById('countryChart'), {
+  type: 'bar',
+  data: {
+    labels: data.countries.map(d => `${d.country} (${d.country_name})`),
+    datasets: [
+      {
+        label: 'Total Plays',
+        data: data.countries.map(d => d.total_plays),
+        backgroundColor: 'rgba(30, 215, 96, .70)',
+        borderRadius: 10
+      },
+      {
+        label: 'Churn Rate (%)',
+        data: data.countries.map(d => d.churn_rate_pct),
+        type: 'line',
+        yAxisID: 'y1',
+        borderColor: red,
+        backgroundColor: 'rgba(255,107,107,.18)',
+        tension: .35,
+        pointRadius: 4
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { ticks: { maxRotation: 30, minRotation: 20 } },
+      y: { title: {display:true, text:'Total Plays'} },
+      y1: { position:'right', grid:{drawOnChartArea:false}, title: {display:true, text:'Churn Rate (%)'} }
+    },
+    plugins: { legend: { position: 'bottom' } }
+  }
+});
+
+new Chart(document.getElementById('yearlyChart'), {
+  type: 'line',
+  data: {
+    labels: data.yearly.map(d => d.year),
+    datasets: [
+      {
+        label: 'Total Plays',
+        data: data.yearly.map(d => d.total_plays),
+        borderColor: green,
+        backgroundColor: 'rgba(30,215,96,.14)',
+        fill: true,
+        tension: .35,
+        pointRadius: 5
+      },
+      {
+        label: 'Avg Track Popularity',
+        data: data.yearly.map(d => d.avg_track_popularity * 120),
+        borderColor: yellow,
+        backgroundColor: 'rgba(249,214,92,.10)',
+        tension: .35,
+        pointRadius: 5
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) {
+            if (ctx.dataset.label === 'Avg Track Popularity') return `Avg Track Popularity: ${(ctx.raw/120).toFixed(2)}`;
+            return `${ctx.dataset.label}: ${ctx.raw}`;
+          }
+        }
+      }
+    }
+  }
+});
+
+new Chart(document.getElementById('audioChart'), {
+  type: 'bar',
+  data: {
+    labels: data.audio_skip.map(d => d.popularity_level),
+    datasets: [
+      {
+        label: 'Avg Skip Rate',
+        data: data.audio_skip.map(d => d.avg_skip_rate),
+        backgroundColor: 'rgba(98,198,255,.72)',
+        borderRadius: 10
+      },
+      {
+        label: 'Total Plays / 100000',
+        data: data.audio_skip.map(d => d.total_plays / 100000),
+        backgroundColor: 'rgba(30,215,96,.55)',
+        borderRadius: 10
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: { y: { beginAtZero: true } },
+    plugins: { legend: { position:'bottom' } }
+  }
+});
+
+new Chart(document.getElementById('churnAudioChart'), {
+  type: 'bar',
+  data: {
+    labels: data.churn_audio.map(d => d.user_status),
+    datasets: [
+      {
+        label: 'Total Plays',
+        data: data.churn_audio.map(d => d.total_plays),
+        backgroundColor: ['rgba(30,215,96,.72)','rgba(255,107,107,.72)'],
+        borderRadius: 12
+      },
+      {
+        label: 'Avg Listening Time x 100',
+        data: data.churn_audio.map(d => d.avg_listening_time * 100),
+        type: 'line',
+        borderColor: blue,
+        backgroundColor: 'rgba(98,198,255,.12)',
+        tension: .25,
+        pointRadius: 5
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position:'bottom' },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) {
+            if (ctx.dataset.label === 'Avg Listening Time x 100') return `Avg Listening Time: ${(ctx.raw/100).toFixed(2)} detik`;
+            return `${ctx.dataset.label}: ${ctx.raw}`;
+          }
+        }
+      }
+    }
+  }
+});
+
+const tbody = document.querySelector('#ageTable tbody');
+data.age_playlist_sample.forEach(row => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${row.age_group}</td>
+    <td>${row.playlist_genre}</td>
+    <td>${row.total_plays.toLocaleString('id-ID')}</td>
+    <td>${row.avg_listening_time.toFixed(2)} detik</td>
+    <td>${row.avg_skip_rate.toFixed(4)}</td>
+  `;
+  tbody.appendChild(tr);
+});
+</script>
+</body>
+</html>
